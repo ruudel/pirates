@@ -1,0 +1,77 @@
+[gd_scene format=3 uid="uid://bs48cb1rcmla6"]
+
+[ext_resource type="Texture2D" uid="uid://bivayo0tw1syo" path="res://graphics/UI/mainUI.png" id="1_errlg"]
+[ext_resource type="Script" uid="uid://b5bxsyc8ijxj7" path="res://scenes/world_view.gd" id="2_bl13t"]
+
+[node name="Main" type="Control" unique_id=2104002621]
+layout_mode = 3
+anchors_preset = 0
+
+[node name="UI Background" type="TextureRect" parent="." unique_id=588062132]
+layout_mode = 0
+offset_right = 320.0
+offset_bottom = 180.0
+scale = Vector2(4, 4)
+texture = ExtResource("1_errlg")
+
+[node name="Header" type="HBoxContainer" parent="." unique_id=2089971414]
+layout_mode = 0
+offset_left = 32.0
+offset_top = 8.0
+offset_right = 1248.0
+offset_bottom = 56.0
+size_flags_horizontal = 3
+
+[node name="BountyLabel" type="Label" parent="Header" unique_id=1001662763]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Crew bounty: "
+
+[node name="DayLabel" type="Label" parent="Header" unique_id=1211030590]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Day: "
+horizontal_alignment = 2
+
+[node name="WorldView" type="SubViewportContainer" parent="." unique_id=974441268]
+layout_mode = 0
+offset_top = 64.0
+offset_right = 1280.0
+offset_bottom = 448.0
+script = ExtResource("2_bl13t")
+
+[node name="SubViewport" type="SubViewport" parent="WorldView" unique_id=1153074387]
+size = Vector2i(1280, 384)
+
+[node name="Footer" type="HBoxContainer" parent="." unique_id=946843924]
+layout_mode = 0
+offset_left = 16.0
+offset_top = 464.0
+offset_right = 1264.0
+offset_bottom = 704.0
+
+[node name="MenuBar" type="VBoxContainer" parent="Footer" unique_id=474279717]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 2.0
+
+[node name="Button" type="Button" parent="Footer/MenuBar" unique_id=803673681]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="Button2" type="Button" parent="Footer/MenuBar" unique_id=357673975]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="Button3" type="Button" parent="Footer/MenuBar" unique_id=1970032545]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="Button4" type="Button" parent="Footer/MenuBar" unique_id=90206230]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="MiniMap" type="Control" parent="Footer" unique_id=1186196683]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 8.0
