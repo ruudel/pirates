@@ -19,6 +19,11 @@ config/icon="res://icon.svg"
 
 Dialogic="*uid://ds2q0uclmolvu"
 MapData="*uid://ctfwfkxh7twit"
+CharacterGenerator="*uid://dh405ox66383k"
+SailingEventPool="*uid://c31x4mosm4y3x"
+SailingManager="*uid://cqnka5dqpjlpq"
+TavernManager="*uid://ubqlsivrfshc"
+CrewManager="*uid://cowlomwvyvp26"
 
 [dialogic]
 
@@ -81,11 +86,15 @@ window/size/viewport_height=720
 
 [editor]
 
-movie_writer/movie_file="C:/Users/raido.uudel/Documents/Godot projects/esoterica/muvi.mp4"
+movie_writer/movie_file="/Users/raidouudel/Godot projects/pirates/muvi.ogv"
 
 [editor_plugins]
 
 enabled=PackedStringArray("res://addons/dialogic/plugin.cfg")
+
+[global_group]
+
+tavern_ui=""
 
 [input]
 

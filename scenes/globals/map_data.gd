@@ -3,6 +3,7 @@ extends Node
 
 signal player_moved(to_node: IslandNode)
 signal travel_started(from_node: IslandNode, to_node: IslandNode)
+signal player_left_island
 
 var islands: Dictionary = {}
 var current_island_id: String = ""
@@ -21,19 +22,24 @@ func get_neighbours() -> Array:
 			result.append(islands[id])
 	return result
 
-func travel_to(id: String) -> void:
+# Fire this in travel_to() before begin_sailing:
+func travel_to(id: String, grand_line: bool = false) -> void:
 	if is_travelling:
 		return
 	if id in get_current().connections:
 		is_travelling = true
+		player_left_island.emit()
 		var destination = islands[id]
 		travel_started.emit(get_current(), destination)
-		# Caller (mini_map) drives the tween, then calls finish_travel()
+
+func begin_sailing(destination_id: String) -> void:
+	SailingManager.start_sailing(destination_id)
 
 func finish_travel(id: String) -> void:
 	islands[current_island_id].is_visited = true
 	current_island_id = id
-	islands[current_island_id].generate_locations()  # add this line
+	islands[current_island_id].generate_locations()
+	CrewManager.inject_secrets_into_current()  # add this line
 	is_travelling = false
 	player_moved.emit(get_current())
 

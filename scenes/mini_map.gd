@@ -14,12 +14,15 @@ const LINE_COL    = Color(0, 0, 0, 0.4)
 var _buttons: Dictionary = {}
 var _tween_offset: float = 0.0
 var _player_marker: Label
+var _connections_layer
 var _current_mode: MapMode = MapMode.SEA
 
 func _ready() -> void:
-	_player_marker = $PlayerMarker
+	_player_marker = $"../../../WorldView/PlayerMarker"
+	_connections_layer = $NodeConnections
 	MapData.player_moved.connect(_on_player_moved)
 	MapData.travel_started.connect(_on_travel_started)
+	SailingManager.sailing_arrived.connect(_on_sailing_arrived)
 	_rebuild()
 
 # ─── POSITION HELPERS ────────────────────────────────────────────────────────
@@ -95,8 +98,9 @@ func _build_sea_map() -> void:
 		var btn = Button.new()
 		btn.custom_minimum_size = Vector2(ICON_SIZE, ICON_SIZE)
 		btn.position = draw_pos - Vector2(ICON_SIZE, ICON_SIZE) * 0.5
-		btn.text = "★" if id == current.id else ("?" if not node.is_visited else _type_icon(node.type))
-		btn.tooltip_text = node.label if node.is_visited else "Unknown island"
+		var is_known = node.is_visited or id == MapData.current_island_id
+		btn.text = "★" if id == MapData.current_island_id else ("?" if not is_known else _type_icon(node.type))
+		btn.tooltip_text = node.label if is_known else "Unknown island"
 		btn.pressed.connect(_on_island_clicked.bind(id))
 		add_child(btn)
 		_buttons[id] = btn
@@ -111,16 +115,38 @@ func _build_island_map() -> void:
 	$NodeConnections.hide()
 	_player_marker.hide()
 
+	# Normal locations
 	for loc in current.locations:
 		var btn = Button.new()
 		btn.custom_minimum_size = Vector2(ICON_SIZE, ICON_SIZE)
 		btn.position = loc.map_position - Vector2(ICON_SIZE, ICON_SIZE) * 0.5
 		btn.text = _location_icon(loc.type)
 		btn.tooltip_text = loc.label
-		btn.pressed.connect(_on_location_clicked.bind(loc.id))
+
+		var accessible = loc.type == IslandNode.LocationType.PORT \
+					  or loc.type == IslandNode.LocationType.TAVERN \
+					  or CrewManager.has_unlock(loc.type)
+		btn.modulate = Color.WHITE if accessible else Color(0.4, 0.4, 0.4, 0.6)
+		btn.disabled = not accessible
+
+		btn.pressed.connect(_on_location_clicked.bind(loc.id, false))
 		add_child(btn)
 		_buttons[loc.id] = btn
 
+	# Secret locations — only present if crew has the right member
+	for loc in current.secret_locations:
+		var btn = Button.new()
+		btn.custom_minimum_size = Vector2(ICON_SIZE, ICON_SIZE)
+		btn.position = loc.map_position - Vector2(ICON_SIZE, ICON_SIZE) * 0.5
+		btn.text = "✦"   # distinct icon for all secrets
+		btn.tooltip_text = loc.label
+
+		# Secrets are always accessible if they appear — having the crew
+		# member is already the unlock condition
+		btn.modulate = Color("f7c948")   # gold to stand out
+		btn.pressed.connect(_on_location_clicked.bind(loc.id, true))
+		add_child(btn)
+		_buttons[loc.id] = btn
 # ─── MARKER ──────────────────────────────────────────────────────────────────
 
 func _place_marker_instant() -> void:
@@ -180,23 +206,42 @@ func _on_travel_started(from_node: IslandNode, to_node: IslandNode) -> void:
 		 .set_ease(Tween.EASE_IN_OUT)\
 		 .set_trans(Tween.TRANS_SINE)
 
-	tween.chain().tween_callback(MapData.finish_travel.bind(to_node.id))
+	tween.chain().tween_callback(_on_slide_complete.bind(to_node.id))
+
+func _on_slide_complete(destination_id: String) -> void:
+	SailingManager.start_sailing(destination_id)
+
+func _on_sailing_arrived() -> void:
+	MapData.is_travelling = false
+	_zoom_into_island()
 
 func _on_island_clicked(id: String) -> void:
 	if id == MapData.current_island_id or MapData.is_travelling:
 		return
 	MapData.travel_to(id)
 
-func _on_location_clicked(loc_id: String) -> void:
+func _on_location_clicked(loc_id: String, is_secret: bool) -> void:
 	var current = MapData.get_current()
-	var loc = current.get_location(loc_id)
+	var loc = null
+
+	if is_secret:
+		for s in current.secret_locations:
+			if s.id == loc_id:
+				loc = s
+				break
+	else:
+		loc = current.get_location(loc_id)
+
 	if loc == null:
 		return
-	if loc.type == IslandNode.LocationType.PORT:
-		_zoom_out_to_sea()
-	else:
-		print("Entered: ", loc.label)  # replace with actual location logic later
 
+	if loc.type == IslandNode.LocationType.PORT and not is_secret:
+		_zoom_out_to_sea()
+	elif loc.type == IslandNode.LocationType.TAVERN:
+		get_tree().get_first_node_in_group("tavern_ui").open()
+	else:
+		print("Entered: ", loc.label)
+		
 func _set_offset(value: float) -> void:
 	_tween_offset = value
 	_reposition_buttons()

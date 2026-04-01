@@ -6,10 +6,13 @@ var ruins_docked = preload("res://graphics/backgrounds/ruins_dock.png")
 var volcano_docked = preload("res://graphics/backgrounds/volcano_dock.png")
 var frozen_docked = preload("res://graphics/backgrounds/frozen_dock.png")
 var desert_docked = preload("res://graphics/backgrounds/desert_dock.png")
+var sailing = preload("res://graphics/backgrounds/sailing.png")
 
 func _ready() -> void:
 	MapData.player_moved.connect(_on_player_moved)
-	_on_player_moved(MapData.get_current())  # show initial scene
+	_on_player_moved(MapData.get_current())
+	SailingManager.sailing_started.connect(_on_sailing_started)
+	SailingManager.sailing_arrived.connect(_on_sailing_arrived)
 
 func _on_player_moved(node: IslandNode) -> void:
 	match node.type:
@@ -20,3 +23,9 @@ func _on_player_moved(node: IslandNode) -> void:
 		IslandNode.IslandType.FROZEN: $Sprite2D.texture = (frozen_docked)
 		IslandNode.IslandType.DESERT: $Sprite2D.texture = (desert_docked)
 		_:                              pass
+
+func _on_sailing_started() -> void:
+	$Sprite2D.texture = sailing
+	
+func _on_sailing_arrived() -> void:
+	$Sprite2D.texture = sailing
