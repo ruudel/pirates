@@ -1,3 +1,8 @@
 # Godot 4+ specific ignores
 .godot/
 /android/
+*.avi
+*.mp4
+*.mov
+.DS_Store
+node_modules/
