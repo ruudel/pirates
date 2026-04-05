@@ -1,6 +1,6 @@
 extends Node
 
-signal sailing_started
+signal sailing_started(duration: float)
 signal sailing_event_triggered(event: SailingEvent)
 signal sailing_event_resolved(event: SailingEvent, choice_index: int)
 signal sailing_arrived
@@ -28,7 +28,7 @@ func start_sailing(destination_id: String, grand_line: bool = false) -> void:
 	_is_paused      = false
 	_events_fired   = 0
 	_events_to_fire = _roll_events(grand_line)
-	sailing_started.emit()
+	sailing_started.emit(_sail_duration)
 
 func skip_to_arrival() -> void:
 	if not _is_sailing:
@@ -97,3 +97,9 @@ func _apply_effect(event: SailingEvent, choice_index: int) -> void:
 			print("Resources -", choice.effect_value)
 		SailingEvent.Effect.NONE:
 			pass
+
+func get_destination_id() -> String:
+	return _destination_id
+
+func get_sail_duration() -> float:
+	return _sail_duration

@@ -24,6 +24,7 @@ SailingEventPool="*uid://c31x4mosm4y3x"
 SailingManager="*uid://cqnka5dqpjlpq"
 TavernManager="*uid://ubqlsivrfshc"
 CrewManager="*uid://cowlomwvyvp26"
+NameGenerator="*uid://dfa7iqctcpmls"
 
 [dialogic]
 

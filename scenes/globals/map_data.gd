@@ -7,7 +7,6 @@ signal player_left_island
 
 var islands: Dictionary = {}
 var current_island_id: String = ""
-var is_travelling: bool = false
 
 func _ready() -> void:
 	_generate_starter_sea()
@@ -22,26 +21,16 @@ func get_neighbours() -> Array:
 			result.append(islands[id])
 	return result
 
-# Fire this in travel_to() before begin_sailing:
-func travel_to(id: String, grand_line: bool = false) -> void:
-	if is_travelling:
+func travel_to(island_id: String) -> void:
+	if island_id not in get_current().connections:
 		return
-	if id in get_current().connections:
-		is_travelling = true
-		player_left_island.emit()
-		var destination = islands[id]
-		travel_started.emit(get_current(), destination)
+	current_island_id = island_id
+	islands[island_id].is_visited = true
+	player_moved.emit(islands[island_id])
 
 func begin_sailing(destination_id: String) -> void:
+	# Called by mini_map after the slide tween completes
 	SailingManager.start_sailing(destination_id)
-
-func finish_travel(id: String) -> void:
-	islands[current_island_id].is_visited = true
-	current_island_id = id
-	islands[current_island_id].generate_locations()
-	CrewManager.inject_secrets_into_current()  # add this line
-	is_travelling = false
-	player_moved.emit(get_current())
 
 func _generate_starter_sea() -> void:
 	var map_width  = 996
