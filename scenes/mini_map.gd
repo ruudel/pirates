@@ -1,307 +1,122 @@
 extends Control
 
+@export var highlight_shader: ShaderMaterial
+@export var terrain_textures: Array[Texture2D] = []
 
+const ANCHOR_X   = 996.0 / 3.0
+const MAP_WIDTH  = 996.0
+const MAP_HEIGHT = 240.0
+const NODE_SIZE  = 72
+const LINE_COLOR = Color(0.0, 0.0, 0.0, 1.0)
 
+const COLORS = {
+	"current":   Color("f7c948"),
+	"visited":   Color("a8d8a8"),
+	"reachable": Color("ffffff"),
+	"unknown":   Color("555555"),
+}
 
-#
-#enum MapMode { SEA, ISLAND }
-#
-#const ICON_SIZE   = 18.0
-#const MAP_WIDTH   = 996.0
-#const MAP_HEIGHT  = 240.0
-#const ANCHOR_X    = MAP_WIDTH / 3.0
-#const PLAYER_COL  = Color("f7c948")
-#const VISITED_COL = Color("a8d8a8")
-#const UNKNOWN_COL = Color("666666")
-#const LINE_COL    = Color(0, 0, 0, 0.4)
-#
-#var _buttons: Dictionary = {}
-#var _tween_offset: float = 0.0
-#var _player_marker: Label
-#var _connections_layer
-#var _current_mode: MapMode = MapMode.SEA
-#var _sail_tween: Tween = null
-#
-#func _ready() -> void:
-	#_player_marker = $PlayerMarker
-	#_connections_layer = $NodeConnections
-	#MapData.player_moved.connect(_on_player_moved)
-	#MapData.travel_started.connect(_on_travel_started)
-	#SailingManager.sailing_arrived.connect(_on_sailing_arrived)
-	#SailingManager.sailing_started.connect(_on_sailing_started)
-	#_rebuild()
-#
-## ─── POSITION HELPERS ────────────────────────────────────────────────────────
-#
-#func _get_sea_draw_position(island: IslandNode) -> Vector2:
-	#var current = MapData.get_current()
-	#var offset = Vector2(ANCHOR_X - current.map_position.x + _tween_offset, 0)
-	#return island.map_position + offset
-#
-## ─── MODE SWITCH ─────────────────────────────────────────────────────────────
-#
-#func _zoom_out_to_sea() -> void:
-	## Zoom out from the port location, not the island center
-	#var current = MapData.get_current()
-	#var port = current.get_location("port")
-	#var origin = port.map_position if port else Vector2(ANCHOR_X, current.map_position.y)
-	#pivot_offset = origin
-#
-	#$NodeConnections.hide()  # already hidden in island mode but be explicit
-#
-	#var tween = create_tween().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	#tween.tween_property(self, "scale", Vector2(3.0, 3.0), 0.6)
-	#tween.tween_callback(_swap_to_sea_mode)  # show() on connections happens inside here via _build_sea_map
-	#tween.tween_property(self, "scale", Vector2(1.0, 1.0), 0.6)
-#
-#func _zoom_into_island() -> void:
-	#var current = MapData.get_current()
-	#pivot_offset = Vector2(ANCHOR_X, current.map_position.y)
-#
-	#$NodeConnections.hide()  # hide lines before zoom starts
-#
-	#var tween = create_tween().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	#tween.tween_property(self, "scale", Vector2(3.0, 3.0), 0.6)
-	#tween.tween_callback(_swap_to_island_mode)
-	#tween.tween_property(self, "scale", Vector2(1.0, 1.0), 0.6)
-#
-#func _swap_to_island_mode() -> void:
-	#_current_mode = MapMode.ISLAND
-	#_rebuild()
-#
-#func _swap_to_sea_mode() -> void:
-	#_current_mode = MapMode.SEA
-	#_rebuild()
-#
-## ─── REBUILD ─────────────────────────────────────────────────────────────────
-#
-#func _rebuild() -> void:
-	#for b in _buttons.values():
-		#b.queue_free()
-	#_buttons.clear()
-	#queue_redraw()
-#
-	#if _current_mode == MapMode.ISLAND:
-		#_build_island_map()
-	#else:
-		#_build_sea_map()
-#
-#func _build_sea_map() -> void:
-	#_tween_offset = 0.0
-	#var current    = MapData.get_current()
-	#var neighbours = MapData.get_neighbours()
-	#var visible_ids: Array = [current.id]
-	#for n in neighbours:
-		#visible_ids.append(n.id)
-#
-	#for id in visible_ids:
-		#var node: IslandNode = MapData.islands[id]
-		#var draw_pos = _get_sea_draw_position(node)
-#
-		#if draw_pos.x < -ICON_SIZE or draw_pos.x > MAP_WIDTH + ICON_SIZE:
-			#continue
-#
-		#var btn = Button.new()
-		#btn.custom_minimum_size = Vector2(ICON_SIZE, ICON_SIZE)
-		#btn.position = draw_pos - Vector2(ICON_SIZE, ICON_SIZE) * 0.5
-		#var is_known = node.is_visited or id == MapData.current_island_id
-		#btn.text = "★" if id == MapData.current_island_id else ("?" if not is_known else _type_icon(node.type))
-		#btn.tooltip_text = node.label if is_known else "Unknown island"
-		#btn.pressed.connect(_on_island_clicked.bind(id))
-		#add_child(btn)
-		#_buttons[id] = btn
-#
-	#_place_marker_instant()
-	#_style_buttons()
-	#$NodeConnections.show()
-	#$NodeConnections.queue_redraw()
-#
-#func _build_island_map() -> void:
-	#var current = MapData.get_current()
-	#$NodeConnections.hide()
-	#_player_marker.hide()
-#
-	## Normal locations
-	#for loc in current.locations:
-		#var btn = Button.new()
-		#btn.custom_minimum_size = Vector2(ICON_SIZE, ICON_SIZE)
-		#btn.position = loc.map_position - Vector2(ICON_SIZE, ICON_SIZE) * 0.5
-		#btn.text = _location_icon(loc.type)
-		#btn.tooltip_text = loc.label
-#
-		#var accessible = loc.type == IslandNode.LocationType.PORT \
-					  #or loc.type == IslandNode.LocationType.TAVERN \
-					  #or CrewManager.has_unlock(loc.type)
-		#btn.modulate = Color.WHITE if accessible else Color(0.4, 0.4, 0.4, 0.6)
-		#btn.disabled = not accessible
-#
-		#btn.pressed.connect(_on_location_clicked.bind(loc.id, false))
-		#add_child(btn)
-		#_buttons[loc.id] = btn
-#
-	## Secret locations — only present if crew has the right member
-	#for loc in current.secret_locations:
-		#var btn = Button.new()
-		#btn.custom_minimum_size = Vector2(ICON_SIZE, ICON_SIZE)
-		#btn.position = loc.map_position - Vector2(ICON_SIZE, ICON_SIZE) * 0.5
-		#btn.text = "✦"   # distinct icon for all secrets
-		#btn.tooltip_text = loc.label
-#
-		## Secrets are always accessible if they appear — having the crew
-		## member is already the unlock condition
-		#btn.modulate = Color("f7c948")   # gold to stand out
-		#btn.pressed.connect(_on_location_clicked.bind(loc.id, true))
-		#add_child(btn)
-		#_buttons[loc.id] = btn
-## ─── MARKER ──────────────────────────────────────────────────────────────────
-#
-#func _place_marker_instant() -> void:
-	#if _player_marker == null:
-		#return
-	#if SailingManager._is_sailing:
-		#return
-	#_player_marker.show()
-	#var current = MapData.get_current()
-	#var pos = _get_sea_draw_position(current)
-	#_player_marker.position = pos - _player_marker.size * 0.5
-#
-#func _reposition_buttons() -> void:
-	#if _current_mode == MapMode.ISLAND:
-		#return
-	#for id in _buttons:
-		#var node: IslandNode = MapData.islands[id]
-		#var draw_pos = _get_sea_draw_position(node)
-		#_buttons[id].position = draw_pos - Vector2(ICON_SIZE, ICON_SIZE) * 0.5
-#
-	## Only reposition marker if not currently sailing
-	#if not SailingManager._is_sailing:
-		#var current = MapData.get_current()
-		#var marker_pos = _get_sea_draw_position(current)
-		#_player_marker.position = marker_pos - Vector2(ICON_SIZE, ICON_SIZE) * 0.5
-#
-#func _on_sailing_started(duration: float) -> void:
-	#await get_tree().process_frame
-#
-	#var current = MapData.get_current()
-	#var dest_id = SailingManager.get_destination_id()
-	#if not MapData.islands.has(dest_id):
-		#return
-#
-	#var destination = MapData.islands[dest_id]
-	#var half = Vector2(ICON_SIZE, ICON_SIZE) * 0.5
-#
-	#var from_pos = _get_sea_draw_position(current)     - half
-	#var to_pos   = _get_sea_draw_position(destination) - half
-#
-	#_player_marker.show()
-	#_player_marker.position = from_pos
-#
-	#if _sail_tween:
-		#_sail_tween.kill()
-#
-	#_sail_tween = create_tween().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	#_sail_tween.tween_property(_player_marker, "position", to_pos, duration)
-## ─── STYLING ─────────────────────────────────────────────────────────────────
-#
-#func _style_buttons() -> void:
-	#var current_id = MapData.current_island_id
-	#for id in _buttons:
-		#if not MapData.islands.has(id):
-			#continue
-		#var btn: Button  = _buttons[id]
-		#var node: IslandNode = MapData.islands[id]
-		#if id == current_id:
-			#btn.modulate = PLAYER_COL
-		#elif node.is_visited:
-			#btn.modulate = VISITED_COL
-		#else:
-			#btn.modulate = UNKNOWN_COL
-#
-## ─── SIGNALS ─────────────────────────────────────────────────────────────────
-#
-#func _on_player_moved(_node: IslandNode) -> void:
-	#print("_on_player_moved called, is_sailing: ", SailingManager._is_sailing)
-	#if SailingManager._is_sailing:
-		#return  # don't rebuild while sailing
-	#_zoom_into_island()
-#
-#func _on_travel_started(from_node: IslandNode, to_node: IslandNode) -> void:
-	#var shift = from_node.map_position.x - to_node.map_position.x
-	#_tween_offset = 0.0
-#
-	#var from_pos = _get_sea_draw_position(from_node) - _player_marker.size * 0.5
-	#var to_pos = Vector2(
-		#to_node.map_position.x + (ANCHOR_X - from_node.map_position.x + shift),
-		#to_node.map_position.y
-	#) - _player_marker.size * 0.5
-#
-	#var tween = create_tween().set_parallel(true)
-	#tween.tween_method(_set_offset, 0.0, shift, 0.6)\
-		 #.set_ease(Tween.EASE_IN_OUT)\
-		 #.set_trans(Tween.TRANS_SINE)
-	#tween.tween_property(_player_marker, "position", to_pos, 0.6)\
-		 #.from(from_pos)\
-		 #.set_ease(Tween.EASE_IN_OUT)\
-		 #.set_trans(Tween.TRANS_SINE)
-#
-	#tween.chain().tween_callback(_on_slide_complete.bind(to_node.id))
-#
-#func _on_slide_complete(destination_id: String) -> void:
-	#SailingManager.start_sailing(destination_id)
-#
-#func _on_sailing_arrived() -> void:
-	#MapData.is_travelling = false
-	#_zoom_into_island()
-#
-#func _on_island_clicked(id: String) -> void:
-	#if id == MapData.current_island_id or MapData.is_travelling:
-		#return
-	#MapData.travel_to(id)
-#
-#func _on_location_clicked(loc_id: String, is_secret: bool) -> void:
-	#var current = MapData.get_current()
-	#var loc = null
-#
-	#if is_secret:
-		#for s in current.secret_locations:
-			#if s.id == loc_id:
-				#loc = s
-				#break
-	#else:
-		#loc = current.get_location(loc_id)
-#
-	#if loc == null:
-		#return
-#
-	#if loc.type == IslandNode.LocationType.PORT and not is_secret:
-		#_zoom_out_to_sea()
-	#elif loc.type == IslandNode.LocationType.TAVERN:
-		#get_tree().get_first_node_in_group("tavern_ui").open()
-	#else:
-		#print("Entered: ", loc.label)
-		#
-#func _set_offset(value: float) -> void:
-	#_tween_offset = value
-	#_reposition_buttons()
-	#$NodeConnections.queue_redraw()
-#
-## ─── ICONS ───────────────────────────────────────────────────────────────────
-#
-#func _type_icon(type: IslandNode.IslandType) -> String:
-	#match type:
-		#IslandNode.IslandType.TOWN:     return "⌂"
-		#IslandNode.IslandType.FOREST:   return "♣"
-		#IslandNode.IslandType.RUINS:    return "▲"
-		#IslandNode.IslandType.VOLCANIC: return "🌋"
-		#IslandNode.IslandType.FROZEN:   return "❄"
-		#_:                              return "•"
-#
-#func _location_icon(type: IslandNode.LocationType) -> String:
-	#match type:
-		#IslandNode.LocationType.PORT:        return "⚓"
-		#IslandNode.LocationType.TAVERN:      return "🍺"
-		#IslandNode.LocationType.MARKET:      return "🛒"
-		#IslandNode.LocationType.SHRINE:      return "⛩"
-		#IslandNode.LocationType.CAVE:        return "🕳"
-		#IslandNode.LocationType.BLACKSMITH:  return "⚒"
-		#_:                                   return "•"
+var _island_nodes:   Dictionary = {}  # id -> TextureButton
+var _player_marker:  Sprite2D
+var _connections:    Node2D
+
+func _ready() -> void:
+	_connections   = $Connections
+	_player_marker = $PlayerMarker
+	WorldMap.world_generated.connect(_rebuild)
+	WorldMap.current_island_changed.connect(_on_island_changed)
+	_rebuild()
+
+# ── build ─────────────────────────────────────────────────────────────────────
+
+func _rebuild() -> void:
+	for child in _island_nodes.values():
+		child.queue_free()
+	_island_nodes.clear()
+	_connections.queue_redraw()
+
+	var sea_islands = WorldMap.get_islands_in_sea(WorldMap.current_sea)
+	for island in sea_islands:
+		_spawn_node(island)
+	_place_marker()
+
+func _spawn_node(island: Island) -> void:
+	var btn = TextureButton.new()
+	btn.custom_minimum_size = Vector2(NODE_SIZE, NODE_SIZE)
+	btn.ignore_texture_size = true
+	btn.stretch_mode        = TextureButton.STRETCH_KEEP_ASPECT_CENTERED
+
+	# Assign terrain texture
+	var terrain_index = island.terrain as int
+	if terrain_index < terrain_textures.size() and terrain_textures[terrain_index] != null:
+		btn.texture_normal = terrain_textures[terrain_index]
+
+	btn.position     = _draw_pos(island) - Vector2(NODE_SIZE, NODE_SIZE) * 0.5
+	btn.tooltip_text = "%s\n%s" % [island.name, Island.terrain_name(island.terrain)]
+	btn.mouse_entered.connect(_on_hover.bind(island.id, true))
+	btn.mouse_exited.connect(_on_hover.bind(island.id, false))
+	btn.pressed.connect(_on_clicked.bind(island.id))
+	btn.modulate     = _color_for(island)
+	add_child(btn)
+	_island_nodes[island.id] = btn
+
+func _place_marker() -> void:
+	if _player_marker == null:
+		return
+	var current = WorldMap.get_current()
+	_player_marker.position = _draw_pos(current) - _player_marker.texture.get_size() * 0.5
+
+# ── draw connections ──────────────────────────────────────────────────────────
+
+ #In Connections (Node2D) script:
+func _draw() -> void:
+	print("drawing connections, island count: ", WorldMap.islands.size())
+	for island in WorldMap.get_islands_in_sea(WorldMap.current_sea):
+		for to_id in island.connections_out:
+			if WorldMap.islands.has(to_id):
+				var a = _draw_pos(island)
+				var b = _draw_pos(WorldMap.islands[to_id])
+				draw_line(a, b, Color(0.0, 0.0, 0.0, 1.0), 1.0)
+
+# ── positioning ───────────────────────────────────────────────────────────────
+
+func _draw_pos(island: Island) -> Vector2:
+	# Offset so current island sits at ANCHOR_X
+	var current = WorldMap.get_current()
+	var offset  = Vector2(ANCHOR_X - current.map_position.x, 0)
+	return island.map_position + offset
+
+# ── interaction ───────────────────────────────────────────────────────────────
+
+func _on_clicked(id: String) -> void:
+	if id == WorldMap.current_id:
+		return
+	var island = WorldMap.islands[id]
+	if id not in WorldMap.get_current().connections_out:
+		return
+	WorldMap.travel_to(id)
+
+func _on_hover(id: String, hovering: bool) -> void:
+	if not _island_nodes.has(id):
+		return
+	var btn    = _island_nodes[id]
+	var island = WorldMap.islands[id]
+	if hovering:
+		btn.modulate = _color_for(island).lightened(0.3)
+		# apply highlight shader here
+	else:
+		btn.modulate = _color_for(island)
+
+func _on_island_changed(_island: Island) -> void:
+	_rebuild()
+
+# ── helpers ───────────────────────────────────────────────────────────────────
+
+func _color_for(island: Island) -> Color:
+	if island.is_current:
+		return COLORS["current"]
+	if island.id in WorldMap.get_current().connections_out:
+		return COLORS["reachable"]
+	if island.is_visited:
+		return COLORS["visited"]
+	return COLORS["unknown"]

@@ -8,7 +8,7 @@ var members: Array = []  # Array[Character]
 
 func _ready() -> void:
 	_spawn_player()
-	_spawn_test_crew()
+	#_spawn_test_crew()
 
 func _spawn_player() -> void:
 	var p = Character.new()

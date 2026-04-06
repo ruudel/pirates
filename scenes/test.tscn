@@ -10,9 +10,15 @@
 [ext_resource type="Script" uid="uid://kj01mh7jti6r" path="res://scenes/tavern_ui.gd" id="6_jcd4p"]
 [ext_resource type="Script" uid="uid://bb3dfyyq4h8xr" path="res://scenes/crew_panel.gd" id="7_44saj"]
 [ext_resource type="Texture2D" uid="uid://bj3ivl4ckfng" path="res://assets/kenney_cartography-pack/Textures/parchmentCrinkled.png" id="8_uacia"]
+[ext_resource type="Texture2D" uid="uid://mtvdd3tgee8g" path="res://assets/kenney_cartography-pack/PNG/Default/elementSquare.png" id="10_7mbro"]
 [ext_resource type="Texture2D" uid="uid://c0hmux72blo6l" path="res://assets/kenney_cartography-pack/PNG/Default/ship.png" id="10_ajshl"]
 [ext_resource type="Texture2D" uid="uid://cjeicj6bqvt8v" path="res://assets/kenney_cartography-pack/Spritesheet/spritesheet_default.png" id="10_yk7ts"]
 [ext_resource type="Shader" uid="uid://bxo01glvhmny0" path="res://scenes/ship_marker.gdshader" id="11_ghpyy"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_44saj"]
+shader = ExtResource("11_ghpyy")
+shader_parameter/outline_color = Color(0.9669389, 0.96693903, 0.96693903, 1)
+shader_parameter/outline_size = 8.0
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_ghpyy"]
 shader = ExtResource("11_ghpyy")
@@ -1347,6 +1353,8 @@ layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 script = ExtResource("3_74lek")
+highlight_shader = SubResource("ShaderMaterial_44saj")
+terrain_textures = Array[Texture2D]([ExtResource("10_7mbro"), ExtResource("10_7mbro"), ExtResource("10_7mbro"), ExtResource("10_7mbro"), ExtResource("10_7mbro"), ExtResource("10_7mbro"), ExtResource("10_7mbro")])
 
 [node name="Background" type="TextureRect" parent="Footer/ScrollContainer/MiniMap" unique_id=1761801944]
 layout_mode = 0
@@ -1357,7 +1365,7 @@ offset_bottom = 793.0
 scale = Vector2(0.7, 0.7)
 texture = ExtResource("8_uacia")
 
-[node name="NodeConnections" type="Node2D" parent="Footer/ScrollContainer/MiniMap" unique_id=1534682325]
+[node name="Connections" type="Node2D" parent="Footer/ScrollContainer/MiniMap" unique_id=1534682325]
 script = ExtResource("5_j5jx5")
 
 [node name="PlayerMarker" type="Sprite2D" parent="Footer/ScrollContainer/MiniMap" unique_id=1783039236]
